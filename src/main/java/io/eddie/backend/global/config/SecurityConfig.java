@@ -1,5 +1,6 @@
 package io.eddie.backend.global.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -8,7 +9,10 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
@@ -19,7 +23,10 @@ public class SecurityConfig {
                 .cors( cors -> cors.disable())
                 .formLogin(form -> form.disable() )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .oauth2Login(Customizer.withDefaults())
+//                .oauth2Login(Customizer.withDefaults())
+                .oauth2Login( oauth -> {
+                    oauth.successHandler(oAuth2SuccessHandler);
+                })
                 .authorizeHttpRequests(
                         auth -> auth
                                 .requestMatchers("/user/**")

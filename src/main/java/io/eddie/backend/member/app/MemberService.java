@@ -44,7 +44,7 @@ public class MemberService extends DefaultOAuth2UserService {
         });
 
         if ( findMember.getProvider().equals(providerId) ) {
-            return memberDetails.setRole(findMember.getRole());
+            return memberDetails.setId(findMember.getId()).setRole(findMember.getRole());
         } else {
             throw new IllegalStateException("이미 다른 이메일로 가입되어있는 유저입니다. 다시 로그인해주세요");
         }

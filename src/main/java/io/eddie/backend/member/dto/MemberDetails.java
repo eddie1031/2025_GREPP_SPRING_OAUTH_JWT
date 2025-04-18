@@ -16,6 +16,9 @@ import java.util.Map;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberDetails implements OAuth2User {
 
+    @Setter
+    private Long id;
+
     private String name;
     private String email;
 

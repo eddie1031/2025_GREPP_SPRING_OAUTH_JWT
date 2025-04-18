@@ -1,31 +1,108 @@
 package io.eddie.backend.member.app;
 
-import io.jsonwebtoken.Jwts;
+import io.eddie.backend.global.config.JwtConfiguration;
+import io.eddie.backend.member.dao.RefreshTokenRepository;
+import io.eddie.backend.member.domain.Member;
+import io.eddie.backend.member.domain.RefreshToken;
+import io.eddie.backend.member.dto.Role;
+import io.eddie.backend.member.dto.TokenBody;
+import io.eddie.backend.member.dto.TokenPair;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
 import java.util.Date;
 
+@Slf4j
 @Service
+@Transactional
+@RequiredArgsConstructor
 public class JwtTokenProvider {
 
-//    @Value("${custom.jwt.validation.exp}")
-//    private String exp;
+    private final JwtConfiguration jwtConfiguration;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public String issue() {
+    public TokenPair generateTokenPair(Member member) {
 
-        String token = Jwts.builder()
-                .subject("hello, World!")
-                .claim("spring", "easy")
-                .issuedAt(new Date())
-                .expiration(new Date(new Date().getTime() + 0L))
-                .signWith(Keys.hmacShaKeyFor("A5A10BC17B4E653C78BDD55FFFD9DEE3BE5790CD6F3F64DC1E82E791F9821C17".getBytes())
-                        , Jwts.SIG.HS256)
-                .compact();
+        String accessToken = issueAccessToken(member.getId(), member.getRole());
+        String refreshToken = issueRefreshToken(member.getId(), member.getRole());
 
-        return token;
+        RefreshToken token = new RefreshToken(refreshToken, member);
+        refreshTokenRepository.save(token);
+
+        return TokenPair.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
+
+    public String issueAccessToken(Long id, Role role) {
+        return issue(id, role, jwtConfiguration.getValidation().getAccess());
+    }
+
+    public String issueRefreshToken(Long id, Role role) {
+        return issue(id, role, jwtConfiguration.getValidation().getRefresh());
+    }
+
+    private String issue(Long id, Role role, Long expTime) {
+        return Jwts.builder()
+                .subject(id.toString())
+                .claim("role", role)
+                .issuedAt(new Date())
+                .expiration(new Date(new Date().getTime() + expTime))
+                .signWith(getSecretKey(), Jwts.SIG.HS256)
+                .compact();
+    }
+
+    public boolean validate(String token) {
+
+        try {
+            Jwts.parser()
+                .verifyWith(getSecretKey())
+                .build()
+                .parseSignedClaims(token);
+
+            return true;
+        } catch ( JwtException e ) {
+            log.error("token = {}", token);
+            log.error("토큰이 이상해요..");
+        } catch ( IllegalStateException e ) {
+            log.error("token = {}", token);
+            log.info("이상한 토큰이 검출되었습니다.");
+        } catch (Exception e) {
+            log.error("token = {}", token);
+            log.info(";;");
+        }
+
+        return false;
+
+    }
+
+    public TokenBody parseJwt(String token) {
+
+        Jws<Claims> parsed = Jwts.parser()
+                .verifyWith(getSecretKey())
+                .build()
+                .parseSignedClaims(token);
+
+        String sub = parsed.getPayload().getSubject();
+        String role = parsed.getPayload().get("role").toString();
+
+        return new TokenBody(
+                Long.parseLong(sub)
+                , Role.valueOf(role)
+        );
+
+    }
+
+    private SecretKey getSecretKey() {
+        return Keys.hmacShaKeyFor(jwtConfiguration.getSecrets().getAppKey().getBytes());
+    }
 
 }
