@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Slf4j
@@ -49,6 +50,17 @@ public class MemberService extends DefaultOAuth2UserService {
             throw new IllegalStateException("이미 다른 이메일로 가입되어있는 유저입니다. 다시 로그인해주세요");
         }
 
+    }
+
+    public Optional<Member> findById(Long id) {
+        return memberRepository.findById(id);
+    }
+
+    public Member getById(Long id) {
+        return findById(id)
+                .orElseThrow(
+                        () -> new NoSuchElementException()
+                );
     }
 
 

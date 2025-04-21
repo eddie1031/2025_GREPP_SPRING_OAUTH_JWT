@@ -1,7 +1,9 @@
 package io.eddie.backend.member.app;
 
 import io.eddie.backend.global.config.JwtConfiguration;
+import io.eddie.backend.member.dao.RefreshTokenBlackListRepository;
 import io.eddie.backend.member.dao.RefreshTokenRepository;
+import io.eddie.backend.member.dao.TokenRepository;
 import io.eddie.backend.member.domain.Member;
 import io.eddie.backend.member.domain.RefreshToken;
 import io.eddie.backend.member.dto.Role;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -25,15 +28,18 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     private final JwtConfiguration jwtConfiguration;
-    private final RefreshTokenRepository refreshTokenRepository;
+//    private final RefreshTokenRepository refreshTokenRepository;
+//    private final RefreshTokenBlackListRepository refreshTokenBlackListRepository;
+
+    private final TokenRepository tokenRepository;
+
 
     public TokenPair generateTokenPair(Member member) {
 
         String accessToken = issueAccessToken(member.getId(), member.getRole());
         String refreshToken = issueRefreshToken(member.getId(), member.getRole());
 
-        RefreshToken token = new RefreshToken(refreshToken, member);
-        refreshTokenRepository.save(token);
+        tokenRepository.save(member, refreshToken);
 
         return TokenPair.builder()
                 .accessToken(accessToken)
@@ -41,6 +47,9 @@ public class JwtTokenProvider {
                 .build();
     }
 
+    public Optional<RefreshToken> findRefreshToken(Long memberId) {
+        return tokenRepository.findValidRefToken(memberId);
+    }
 
     public String issueAccessToken(Long id, Role role) {
         return issue(id, role, jwtConfiguration.getValidation().getAccess());
@@ -74,10 +83,10 @@ public class JwtTokenProvider {
             log.error("토큰이 이상해요..");
         } catch ( IllegalStateException e ) {
             log.error("token = {}", token);
-            log.info("이상한 토큰이 검출되었습니다.");
+            log.error("이상한 토큰이 검출되었습니다.");
         } catch (Exception e) {
             log.error("token = {}", token);
-            log.info(";;");
+            log.error(";;");
         }
 
         return false;

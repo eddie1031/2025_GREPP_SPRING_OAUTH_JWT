@@ -3,10 +3,11 @@ package io.eddie.backend.global.config;
 
 import io.eddie.backend.member.app.JwtTokenProvider;
 import io.eddie.backend.member.app.MemberService;
+import io.eddie.backend.member.domain.Member;
+import io.eddie.backend.member.domain.RefreshToken;
 import io.eddie.backend.member.dto.MemberDetails;
-import jakarta.servlet.FilterChain;
+import io.eddie.backend.member.dto.TokenPair;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,8 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -31,9 +34,27 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         MemberDetails principal = (MemberDetails) authentication.getPrincipal();
 
-        String token = jwtTokenProvider.issueAccessToken(principal.getId(), principal.getRole());
-        log.info("token = {}", token);
+        Member findMember = memberService.getById(principal.getId());
 
+        HashMap<String, String> params = new HashMap<>();
+
+        Optional<RefreshToken> refreshTokenOptional = jwtTokenProvider.findRefreshToken(principal.getId());
+
+        if ( refreshTokenOptional.isEmpty() ) {
+            TokenPair tokenPair = jwtTokenProvider.generateTokenPair(findMember);
+            params.put("access", tokenPair.getAccessToken());
+            params.put("refresh", tokenPair.getRefreshToken());
+        } else {
+            String accessToken = jwtTokenProvider.issueAccessToken(principal.getId(), principal.getRole());
+            params.put("access", accessToken);
+            params.put("refresh", refreshTokenOptional.get().getRefreshToken());
+        }
+
+        String access = params.get("access");
+        String refresh = params.get("refresh");
+
+        log.info("access = {}", access);
+        log.info("refresh = {}", refresh);
 
     }
 
