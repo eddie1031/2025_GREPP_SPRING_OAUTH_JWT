@@ -33,6 +33,18 @@ public class MemberDetails implements OAuth2User {
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
+    public static MemberDetails from(Member member) {
+        MemberDetails memberDetails = new MemberDetails();
+
+        memberDetails.id = member.getId();
+
+        memberDetails.email = member.getEmail();
+        memberDetails.role = member.getRole();
+
+        return memberDetails;
+    }
+
+
     @Builder
     public MemberDetails(String name, String email, Map<String, Object> attributes) {
         this.name = name;

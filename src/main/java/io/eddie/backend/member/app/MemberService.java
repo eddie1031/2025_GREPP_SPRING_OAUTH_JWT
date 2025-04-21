@@ -63,5 +63,10 @@ public class MemberService extends DefaultOAuth2UserService {
                 );
     }
 
+    public MemberDetails getMemberDetailsById(Long id) {
+        Member findMember = getById(id);
+        return MemberDetails.from(findMember);
+    }
+
 
 }

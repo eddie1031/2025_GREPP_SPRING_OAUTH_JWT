@@ -12,9 +12,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -24,6 +26,9 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
+
+    @Value("${custom.jwt.redirection.base}")
+    private String baseUrl;
 
     private final MemberService memberService;
     private final JwtTokenProvider jwtTokenProvider;
@@ -50,12 +55,18 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             params.put("refresh", refreshTokenOptional.get().getRefreshToken());
         }
 
-        String access = params.get("access");
-        String refresh = params.get("refresh");
+        String urlStr = genUrlStr(params);
+        getRedirectStrategy().sendRedirect(request, response, urlStr);
 
-        log.info("access = {}", access);
-        log.info("refresh = {}", refresh);
+    }
 
+    private String genUrlStr(HashMap<String, String> params) {
+        return UriComponentsBuilder.fromUriString(baseUrl)
+                .queryParam("access", params.get("access"))
+                .queryParam("refresh", params.get("refresh"))
+                .build()
+                .toUri()
+                .toString();
     }
 
 }
